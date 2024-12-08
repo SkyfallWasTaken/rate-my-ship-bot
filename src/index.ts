@@ -15,9 +15,40 @@ const app = new App({
   appToken: env.SLACK_APP_TOKEN,
 });
 
+const REPO_DOMAINS = [
+  "github.com",
+  "gitlab.com",
+  "bitbucket.org",
+  "sourcehut.org",
+  "sr.ht",
+  "h.hackclub.com",
+  "codeberg.org",
+];
+const URL_REGEX =
+  /[(http(s)?):\/\/(www\.)?a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/gi;
+
 app.message(async ({ message, client }) => {
   if (!message.subtype && !message.thread_ts) {
-    const text = `Hey <@${message.user}>, thanks for posting your ship! If you haven't already, make sure to check out other people's ships too - it helps keep the whole thing going!`;
+    let hasRepo = false;
+    if (message.text) {
+      const urls = message.text.match(URL_REGEX);
+      if (urls) {
+        for (const url of urls) {
+          for (const domain of REPO_DOMAINS) {
+            if (url.includes(domain)) {
+              hasRepo = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    const baseText = `Hey <@${message.user}>, thanks for posting your ship! If you haven't already, make sure to check out other people's ships too - it helps keep the whole thing going!`;
+    let text = baseText;
+    if (!hasRepo) {
+      text = `${baseText}\n\nAlso, it looks like *you didn't include a link to your repo.* Make sure to add it so that people can check out your work!`;
+    }
 
     await client.chat.postEphemeral({
       channel: message.channel,
